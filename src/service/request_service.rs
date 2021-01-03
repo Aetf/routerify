@@ -69,3 +69,35 @@ impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + 
         Box::pin(fut)
     }
 }
+
+#[derive(Debug)]
+pub struct RequestServiceBuilder<B, E> {
+    router: Router<B, E>,
+}
+
+impl<B: HttpBody + Send + Sync + Unpin + 'static, E: std::error::Error + Send + Sync + Unpin + 'static>
+    RequestServiceBuilder<B, E>
+{
+    pub fn new(mut router: Router<B, E>) -> crate::Result<Self> {
+        router.init_x_powered_by_middleware();
+        // router.init_keep_alive_middleware();
+
+        router.init_global_options_route();
+        router.init_default_404_route();
+
+        router.init_err_handler();
+
+        router.init_regex_set()?;
+        router.init_req_info_gen()?;
+        Ok(Self { router })
+    }
+}
+
+impl<B, E> RequestServiceBuilder<B, E> {
+    pub fn build(&mut self, remote_addr: SocketAddr) -> RequestService<B, E> {
+        RequestService {
+            router: &mut self.router,
+            remote_addr,
+        }
+    }
+}
